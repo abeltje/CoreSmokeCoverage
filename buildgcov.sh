@@ -165,7 +165,7 @@ if [ "$GCB_COVER" = "1" ] ; then
     echo "PERL5LIB='$incbase/lib:$incbase/arch' ../perl -I../lib $inccover $incbase/script/cover"
     cd "$builddir/t"
     #PERL5LIB="$incbase/lib:$incbase/arch" \
-        ../perl -I../lib ../bin/cover" \
+        ../perl -I../lib ../bin/cover \
                -outputdir "$mydir/perlcover" cover_db >> "$logf" 2>&1
 fi
 
