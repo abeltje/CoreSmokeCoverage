@@ -13,7 +13,7 @@ GCB_TEST=1
 GCB_GATHER=1
 GCB_COVER=1
 GCB_ARCHIVE=1
-GCB_PUSH=1
+GCB_PUSH=0
 DBG_SYM=""
 for argv
     do case $argv in
@@ -25,7 +25,7 @@ for argv
         -nogather)    GCB_GATHER=0  ;;
         -nocover)     GCB_COVER=0   ;;
         -noarchive)   GCB_ARCHIVE=0 ;GCB_PUSH=0 ;;
-        -nopush)      GCB_PUSH=0    ;;
+        -push)        GCB_PUSH=1    ;;
         -archiveonly) GCB_RSYNC=0; GCB_BUILD=0; GCB_MAKE=0; GCB_TEST=0;
                       GCB_COVER=0; GCB_GATHER=0 ;;
         -debug)       DBG_SYM="GCB_RSYNC GCB_BUILD GCB_MAKE GCB_TEST"
@@ -47,7 +47,7 @@ Usage: $0 [options]
   -nogather   Don't gather all the gcov information
   -nocover    Don't run Devel::Cover's cover
   -noarchive  Don't create the tarball (implies -nopush)
-  -nopush     Don't push the tarball to ztreet
+  -push       push the tarball to ztreet
 EOF
     esac
 done
@@ -133,13 +133,16 @@ fi
 coverdir=`ls "$builddir/ext" | grep Devel-Cover`
 incbase="$builddir/ext/$coverdir/blib"
 usecover=-MDevel::Cover=-ignore,\\.t$,-inc,/does/not/exist
-inccover="-I$incbase/lib -I$incbase/arch"
+#inccover="-I$incbase/lib -I$incbase/arch"
+inccover=""
 
 if [ "$GCB_TEST" = "1" ] ; then
-    echo "test_harness with '$inccover $usecover'"
+    echo "make test_prep"
+    make test_prep
+    echo "cd t; ./perl $inccover $usecover harness"
     echo "#name=maketestharness make test_harness" >> "$logf"
-    HARNESS_PERL_SWITCHES="$inccover $usecover" \
-        make test_harness >> "$logf" 2>&1
+    export LD_LIBRARY_PATH=`pwd`; cd t; ./perl $inccover $usecover harness >> "$logf" 2>&1
+#   HARNESS_PERL_SWITCHES="$inccover $usecover" make test_harness >> "$logf" 2>&1
 fi
 
 # here we gather the coverage data
@@ -150,29 +153,25 @@ if [ "$GCB_GATHER" = "1" ] ; then
 
     find "$builddir" -type f -name "*.c"    -exec "$execindir" {} gcov {} \;
 
-    PERL5LIB="$incbase/lib:$incbase/arch" \
+    #PERL5LIB="$incbase/lib:$incbase/arch" \
         find "$builddir" -type f -name "*.gcov" \
              -exec ./perl -Ilib "$incbase/script/gcov2perl" \
                           -db "$builddir/t/cover_db" {} \;
 fi
 
 if [ "$GCB_COVER" = "1" ] ; then
-    cd t
-    PERL5LIB="$incbase/lib:$incbase/arch" \
-        ../perl -I../lib $inccover "$incbase/script/cover"
+    if [ -d "$mydir/perlcover" ] ; then rm -rf "$mydir/perlcover" ; fi
+    mkdir "$mydir/perlcover"
+    echo "PERL5LIB='$incbase/lib:$incbase/arch' ../perl -I../lib $inccover $incbase/script/cover"
+    cd "$builddir/t"
+    #PERL5LIB="$incbase/lib:$incbase/arch" \
+        ../perl -I../lib ../bin/cover" \
+               -outputdir "$mydir/perlcover" cover_db >> "$logf" 2>&1
 fi
 
 if [ "$GCB_ARCHIVE" = "1" ] ; then
     cd "$mydir"
-    if [ -d 'perlcover' ] ; then rm -rf perlcover ; fi
-    mkdir perlcover
-    find "$builddir/t/cover_db/" -type f  -name "*.html" \
-         -exec cp -v {} perlcover/ \;
-
-    find "$builddir/t/cover_db/" -type f  -name "*.css" \
-         -exec cp -v {} perlcover/ \;
-
-    "$builddir/perl" "-I$builddir/lib" -V > perlcover/dashV.txt
+    "$builddir/perl" "-I$builddir/lib" -V > "$mydir/perlcover/dashV.txt"
     perl -MHTML::Entities -i.0 -pe 'encode_entities($_)' $logf
     perl -i.1 -pe 's!^#name=(\S+) (.+)!<a name="$1"></a><h3>$2</h3>!' $logf
     cp -v $logf perlcover/
@@ -182,7 +181,7 @@ if [ "$GCB_ARCHIVE" = "1" ] ; then
     perl -ne '/>(?:Total|file)\b/ and print' coverage.html > covtotal.inc
     cd ..
 
-    my_ver=perlcover`cat "$builddir/.patch"`
+    my_ver=perlcover`cat "$builddir/.patch" | perl -ane 'print $F[-1]'`
     if [ "$GCB_DBG" = "1" ] ; then my_ver="${my_ver}DBG" ; fi
     my_arch="$my_ver.tbz"
     mv perlcover $my_ver
@@ -193,7 +192,7 @@ if [ "$GCB_ARCHIVE" = "1" ] ; then
 
     if [ "$GCB_PUSH" = "1" ] ; then
         phost=ztreet.xs4all.nl
-        pdir=/home/apache/test-smoke/htdocs/pcarchive/
+        pdir=/data/apache/test-smoke/htdocs/pcarchive/
         scp "$my_arch" "$phost:$pdir"
         my_script="cd $pdir.. ;tar -xjf pcarchive/$my_arch"
         my_script="$my_script ;rm -rf perlcover ;ln -s $my_ver perlcover"

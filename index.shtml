@@ -32,7 +32,7 @@
     <pre><!--#include virtual="dashV.txt" --></pre>
     <hr />
     <a name="buildlog"></a><h2>buildlog</h2>
-    <pre><!--#include virtual="buildgcov.log" --></pre>
+    <pre><!--#include virtual="log_buildgcov.log" --></pre>
   </body>
 </html>
 

@@ -23,15 +23,15 @@ FILES NEEDED
     CPAN-Config-Linux.pm or CPAN-Config-Dawin.pm *
     index.shtml
 
-* You will need to edit these and set the paths to your home directory.
+* You will need to edit these and set the paths to your home directory, right
+* at the top of buildgcov.sh.
 
 WHERE TO GET IT
 ===============
 
-At the moment this is available via rsync and subversion:
+At the moment this is available from github:
 
-    rsync://source.test-smoke.org/buildgcov
-    http://source.test-smoke.org/svn/buildgcov
+    https://github.com/abeltje/CoreSmokeCoverage.git
 
 
 VERSION and STUFF
